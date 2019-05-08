@@ -544,6 +544,8 @@ class VideoMode:
                 self.station.RF.off()
             if hasattr(self.station, 'virtual_awg'):
                 self.station.virtual_awg.stop()
+                keys = [list(item.keys())[0] for item in self.sweepparams]
+                self.station.virtual_awg.disable_outputs(keys)
 
         if isinstance(self.minstrumenthandle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
             self.minstrumenthandle.stop_acquisition()
