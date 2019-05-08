@@ -29,6 +29,7 @@ from qtt.algorithms.gatesweep import analyseGateSweep
 import qtt.algorithms.onedot
 import qtt.gui.live_plotting
 import qtt.instrument_drivers.virtualAwg.virtual_awg
+from qtt.measurements.acquisition.interfaces import AcquisitionScopeInterface
 
 from qtt.data import makeDataSet1D, makeDataSet2D, makeDataSet1Dplain, makeDataSet2Dplain
 from qtt.data import diffDataset, loadDataset, writeDataset
@@ -232,6 +233,9 @@ def get_instrument(instr, station=None):
         instr = instr[0]
 
     if isinstance(instr, Instrument):
+        return instr
+
+    if isinstance(instr, AcquisitionScopeInterface):
         return instr
 
     if not isinstance(instr, str):
@@ -1237,7 +1241,9 @@ def get_sampling_frequency(instrument_handle):
     """
     instrument_handle = get_instrument(instrument_handle)
 
-    if isinstance(instrument_handle, qcodes.instrument_drivers.Spectrum.M4i.M4i):
+    if isinstance(instrument_handle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+        return instrument_handle.sample_rate
+    elif isinstance(instrument_handle, qcodes.instrument_drivers.Spectrum.M4i.M4i):
         return instrument_handle.sample_rate()
     elif isinstance(instrument_handle, qcodes.instrument_drivers.ZI.ZIUHFLI.ZIUHFLI):
         return Exception('not implemented yet')

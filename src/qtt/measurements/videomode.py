@@ -21,7 +21,9 @@ from qtt.utilities.tools import connect_slot
 import qtpy.QtWidgets as QtWidgets
 import qtpy.QtCore
 from qtt.measurements.scans import makeDataset_sweep, makeDataset_sweep_2D
-
+from qtt.measurements.acquisition.interfaces import AcquisitionScopeInterface
+from qtt.measurements.post_processing import SignalProcessorRunner, ProcessSawtooth2D
+from qilib.data_set import DataSet
 
 # %%
 
@@ -67,36 +69,40 @@ class videomode_callback:
             data (list or array): either a list with length the number of channels or a numpy array with all data
         """
 
-        minstrumenthandle = qtt.measurements.scans.get_instrument(self.minstrument)
+        instrument_handle = qtt.measurements.scans.get_instrument(self.minstrument)
+        if isinstance(instrument_handle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+            signal_data = DataSet()
+            signal_data.user_data = {'width': [self.waveform['width_horz'], self.waveform['width_vert']], 'resolution': self.waveform['resolution']}
+            _ = [signal_data.add_array(i) for i in instrument_handle.acquire()]
+            runner = SignalProcessorRunner()
+            runner.add_signal_processor(ProcessSawtooth2D())
+            return list(runner.run(signal_data).data_arrays.values())
+        else:
+            data = qtt.measurements.scans.measuresegment(self.waveform, self.Naverage, instrument_handle,
+                                                         self.unique_channels, **self.measuresegment_arguments)
+            if np.all(data == 0):
+                raise Exception('data returned contained only zeros, aborting')
 
-        data = qtt.measurements.scans.measuresegment(
-            self.waveform, self.Naverage, minstrumenthandle, self.unique_channels, **self.measuresegment_arguments)
+            dd = []
+            for ii, channel in enumerate(self.channels):
+                uchannelidx = self.unique_channels.index(channel)
+                data_processed = np.array(data[uchannelidx])
 
-        if np.all(data == 0):
-            raise Exception('data returned contained only zeros, aborting')
+                if self.diff_dir is not None:
+                    if isinstance(self.diff_dir, (list, tuple)):
+                        diff_dir = self.diff_dir[ii]
+                    else:
+                        diff_dir = self.diff_dir
+                    data_processed = qtt.utilities.tools.diffImageSmooth(data_processed, dy=diff_dir, sigma=self.diffsigma)
+                if self.smoothing:
+                    data_processed = qtt.algorithms.generic.smoothImage(data_processed)
+                if self.laplace:
+                    data_processed = ndimage.filters.laplace(data_processed, mode='nearest')
 
-        dd = []
-        for ii, channel in enumerate(self.channels):
-            uchannelidx = self.unique_channels.index(channel)
-            data_processed = np.array(data[uchannelidx])
+                dd.append(data_processed)
 
-            if self.diff_dir is not None:
-                if isinstance(self.diff_dir, (list, tuple)):
-                    diff_dir = self.diff_dir[ii]
-                else:
-                    diff_dir = self.diff_dir
-                data_processed = qtt.utilities.tools.diffImageSmooth(
-                    data_processed, dy=diff_dir, sigma=self.diffsigma)
+            return dd
 
-            if self.smoothing:
-                data_processed = qtt.algorithms.generic.smoothImage(
-                    data_processed)
-
-            if self.laplace:
-                data_processed = ndimage.filters.laplace(
-                    data_processed, mode='nearest')
-            dd.append(data_processed)
-        return dd
 
 
 # %%
@@ -169,7 +175,11 @@ class VideoMode:
         # parse instrument
         minstrumenthandle = qtt.measurements.scans.get_instrument(self.minstrumenthandle, station)
 
-        if minstrumenthandle.name in ['digitizer', 'm4i']:
+        if isinstance(minstrumenthandle, AcquisitionScopeInterface):
+            if sample_rate != 'default':
+                minstrumenthandle.sample_rate = sample_rate
+            self.sampling_frequency = lambda: minstrumenthandle.sample_rate
+        elif minstrumenthandle.name in ['digitizer', 'm4i']:
             if sample_rate == 'default':
                 self.sampling_frequency = minstrumenthandle.sample_rate
             else:
@@ -179,8 +189,7 @@ class VideoMode:
             self.sampling_frequency = minstrumenthandle.scope_samplingrate
         else:
             try:
-                minstrumenthandle = qtt.measurements.scans.get_instrument(
-                    minstrument, station)
+                minstrumenthandle = qtt.measurements.scans.get_instrument(minstrument, station)
                 self.sampling_frequency = minstrumenthandle.sample_rate
             except:
                 raise Exception('no fpga or digitizer found')
@@ -465,6 +474,8 @@ class VideoMode:
         if start_readout:
             if self.verbose:
                 print('%s: run: startreadout' % (self.__class__.__name__,))
+            if isinstance(self.minstrumenthandle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+                self.minstrumenthandle.start_acquisition()
             self.startreadout()
 
     def __run_1d_scan(self, awg, virtual_awg, period=1e-3):
@@ -518,6 +529,7 @@ class VideoMode:
                 raise Exception('argument sweepparams of type %s not supported' % type(self.sweepparams))
             if self.verbose:
                 print('%s: 2d scan, define callback ' % (self.__class__.__name__,))
+
         self.datafunction = videomode_callback(self.station, waveform, self.Naverage.get(),
                                                minstrument=(self.minstrumenthandle, self.channels),
                                                resolution=self.resolution, diff_dir=self.diff_dir)
@@ -532,6 +544,10 @@ class VideoMode:
                 self.station.RF.off()
             if hasattr(self.station, 'virtual_awg'):
                 self.station.virtual_awg.stop()
+
+        if isinstance(self.minstrumenthandle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+            self.minstrumenthandle.stop_acquisition()
+
 
     def single(self):
         """Do a single scan with a lot averaging.
