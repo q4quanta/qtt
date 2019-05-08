@@ -22,7 +22,7 @@ import qtpy.QtWidgets as QtWidgets
 import qtpy.QtCore
 from qtt.measurements.scans import makeDataset_sweep, makeDataset_sweep_2D
 from qtt.measurements.acquisition.interfaces import AcquisitionScopeInterface
-from qtt.measurements.post_processing import SignalProcessorRunner, ProcessSawtooth2D
+from qtt.measurements.post_processing import SignalProcessorRunner, ProcessSawtooth2D, ProcessSawtooth1D
 from qilib.data_set import DataSet
 
 # %%
@@ -70,12 +70,18 @@ class videomode_callback:
         """
 
         instrument_handle = qtt.measurements.scans.get_instrument(self.minstrument)
-        if isinstance(instrument_handle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+        if isinstance(instrument_handle, AcquisitionScopeInterface):
             signal_data = DataSet()
-            signal_data.user_data = {'width': [self.waveform['width_horz'], self.waveform['width_vert']], 'resolution': self.waveform['resolution']}
-            _ = [signal_data.add_array(i) for i in instrument_handle.acquire()]
             runner = SignalProcessorRunner()
-            runner.add_signal_processor(ProcessSawtooth2D())
+            if set(('width_horz', 'width_vert', 'resolution')) <= self.waveform.keys():
+                signal_data.user_data = {'width': [self.waveform['width_horz'], self.waveform['width_vert']], 'resolution': self.waveform['resolution']}
+                runner.add_signal_processor(ProcessSawtooth2D())
+            elif 'width' in self.waveform:
+                signal_data.user_data = {'width': self.waveform['width']}
+                runner.add_signal_processor(ProcessSawtooth1D())
+            else:
+                raise ValueError('No width or (width_horz, width_vert, resolution) in waveform settings!')
+            _ = [signal_data.add_array(i) for i in instrument_handle.acquire(number_of_averages=self.Naverage)]
             return list(runner.run(signal_data).data_arrays.values())
         else:
             data = qtt.measurements.scans.measuresegment(self.waveform, self.Naverage, instrument_handle,
@@ -474,7 +480,15 @@ class VideoMode:
         if start_readout:
             if self.verbose:
                 print('%s: run: startreadout' % (self.__class__.__name__,))
-            if isinstance(self.minstrumenthandle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+            if isinstance(self.minstrumenthandle, AcquisitionScopeInterface):
+                if scan_dimensions == 1:
+                    self.minstrumenthandle.period = 1e-3
+                elif scan_dimensions == 2:
+                    self.minstrumenthandle.number_of_samples = np.prod(self.resolution)
+                scan_channels = self.scanparams['minstrument'][1]
+                self.minstrumenthandle.enabled_channels = tuple(item[0] for item in scan_channels)
+                for item in scan_channels:
+                    self.minstrumenthandle.set_input_signal(item[0], item[1])
                 self.minstrumenthandle.start_acquisition()
             self.startreadout()
 
@@ -544,10 +558,13 @@ class VideoMode:
                 self.station.RF.off()
             if hasattr(self.station, 'virtual_awg'):
                 self.station.virtual_awg.stop()
-                keys = [list(item.keys())[0] for item in self.sweepparams]
-                self.station.virtual_awg.disable_outputs(keys)
+                if isinstance(self.sweepparams, dict):
+                    keys = [list(item.keys())[0] for item in self.sweepparams]
+                    self.station.virtual_awg.disable_outputs(keys)
+                elif isinstance(self.sweepparams, str):
+                    self.station.virtual_awg.disable_outputs([self.sweepparams])
 
-        if isinstance(self.minstrumenthandle, qtt.measurements.acquisition.interfaces.AcquisitionScopeInterface):
+        if isinstance(self.minstrumenthandle, AcquisitionScopeInterface):
             self.minstrumenthandle.stop_acquisition()
 
 
