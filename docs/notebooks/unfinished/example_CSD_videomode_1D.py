@@ -6,6 +6,7 @@ from qcodes.instrument_drivers.ZI.ZIHDAWG8 import WARNING_ANY, ZIHDAWG8
 from qcodes.utils.validators import Numbers
 
 from qtt.instrument_drivers.virtualAwg.virtual_awg import VirtualAwg
+from qtt.instrument_drivers.virtual_instruments import VirtualIVVI
 from qtt.measurements.acquisition import UHFLIScopeReader
 from qtt.measurements.videomode import VideoMode
 
@@ -69,10 +70,9 @@ scope_reader.trigger_delay = 0
 
 virtual_awg = VirtualAwg([awg], settings)
 
+period = 1e-3
 width = 30/32
-resolution = [64, 64]
 cable_compensation = 0.0305
-period = 1e-3 # resolution[0] * resolution[1] / nearest_uhfli_sample_rate
 marker_delay = (0.5 + (1 - width) - cable_compensation) * period
 virtual_awg.digitizer_marker_delay(marker_delay)
 
@@ -82,23 +82,8 @@ virtual_awg.digitizer_marker_uptime(marker_uptime)
 
 # STATION
 
-class FakeGate:
-    def get_latest(self):
-        return 0
-
-class FakeGates:
-
-    def __init__(self):
-        self.P1 = FakeGate()
-        self.P2 = FakeGate()
-
-    def allvalues(self):
-        return {}
-
-
-
 station = Station(virtual_awg, scope_reader.adapter.instrument)
-station.gates = FakeGates()
+station.gates = VirtualIVVI('gates', gates=['P1', 'P2'], model=None)
 
 
 # VIDEO MODE
@@ -109,7 +94,7 @@ sweep_gates = 'P1'
 sweep_ranges = 1000
 scope = (scope_reader, [(1, 'Signal Input 1')])
 
-vm = VideoMode(station, sweep_gates, sweep_ranges, minstrument=scope, resolution=resolution)
+vm = VideoMode(station, sweep_gates, sweep_ranges, minstrument=scope)
 vm.updatebg()
 
 app.exec_()

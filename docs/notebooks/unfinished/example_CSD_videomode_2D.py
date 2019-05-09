@@ -6,6 +6,7 @@ from qcodes.instrument_drivers.ZI.ZIHDAWG8 import WARNING_ANY, ZIHDAWG8
 from qcodes.utils.validators import Numbers
 
 from qtt.instrument_drivers.virtualAwg.virtual_awg import VirtualAwg
+from qtt.instrument_drivers.virtual_instruments import VirtualIVVI
 from qtt.measurements.acquisition import UHFLIScopeReader
 from qtt.measurements.videomode import VideoMode
 
@@ -82,12 +83,8 @@ virtual_awg.digitizer_marker_uptime(marker_uptime)
 
 # STATION
 
-class FakeGates:
-    def allvalues(self):
-        return {}
-
 station = Station(virtual_awg, scope_reader.adapter.instrument)
-station.gates = FakeGates()
+station.gates = VirtualIVVI('gates', gates=['P1', 'P2'], model=None)
 
 
 # VIDEO MODE

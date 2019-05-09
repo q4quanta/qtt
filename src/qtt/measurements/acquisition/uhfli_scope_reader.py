@@ -303,7 +303,7 @@ class UHFLIScopeReader(AcquisitionScopeInterface):
         demod_parameter = getattr(self.__uhfli, 'demod{}_{}'.format(channel, parameter))
         return demod_parameter if partial else demod_parameter()
 
-    def __get_uhfli_scope_records(self, number_of_averages: int, timeout: float):
+    def __get_uhfli_scope_records(self, number_of_averages: int, timeout: float) -> List[DataArray]:
         self.__uhfli.scope.execute()
 
         records = 0
@@ -321,7 +321,7 @@ class UHFLIScopeReader(AcquisitionScopeInterface):
         scope_traces = traces[wave_nodepath][:number_of_averages]
         return self.__convert_scope_data(scope_traces, number_of_averages)
 
-    def __convert_scope_data(self, scope_traces, number_of_averages):
+    def __convert_scope_data(self, scope_traces: np.ndarray, number_of_averages: int) -> List[DataArray]:
         data = []
         acquisition_counter = 0
         for channel_index, _ in enumerate(self.enabled_channels):
