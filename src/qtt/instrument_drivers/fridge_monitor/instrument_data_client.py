@@ -43,12 +43,13 @@ class InstrumentDataClient(InstrumentBase):
         except Exception:
             return default_return_value
 
-    def __invoke_setter(self, function_name, function_parameters):
+    def __invoke_setter(self, function_name, value, parameter_name='argument'):
+        function_parameters = {parameter_name: value}
         if self.__client is None:
             raise AttributeError('Client not connected! Run connect first.')
-        self.__client.invoke(function_name, function_parameters, self.timeout)
+        return self.__client.invoke(function_name, function_parameters, self.timeout)
 
-    def add_full_parameter(self, name: str, parameter_class: type = Parameter, **kwargs) -> None:
+    def add_get_set_parameter(self, name: str, parameter_class: type = Parameter, **kwargs) -> None:
         get_command = partial(self.__invoke_getter, name, default_return_value=None)  # default_value???
         set_command = partial(self.__invoke_setter, name)
         self.add_parameter(name, parameter_class, get_cmd=get_command, set_cmd=set_command, **kwargs)
