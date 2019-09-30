@@ -47,10 +47,12 @@ def decode_qcodes_dataset(item):
 
 
 def encode_numpy_array(item):
+    """ Encode a numpy array to JSON """
     return serializer.encode_data(item)
 
 
 def decode_numpy_array(item):
+    """ Decode a numpy array from JSON """
     if 'dtype' in item[JsonSerializeKey.CONTENT]:
         item[JsonSerializeKey.CONTENT][NumpyKeys.DATA_TYPE] = item[JsonSerializeKey.CONTENT].pop('dtype')
     if 'shape' in item[JsonSerializeKey.CONTENT]:
@@ -60,14 +62,43 @@ def decode_numpy_array(item):
 
 
 def encode_numpy_number(item):
+    """ Encode a numpy scalar to JSON """
     return serializer.encode_data(item)
 
 
 def decode_numpy_number(item):
+    """ Decode a numpy scalar from JSON """
     if 'dtype' in item[JsonSerializeKey.CONTENT]:
         item[JsonSerializeKey.CONTENT][NumpyKeys.DATA_TYPE] = item[JsonSerializeKey.CONTENT].pop('dtype')
 
     return serializer.decode_data(item)
+
+
+def encode_json_dataclass(object_tag, item):
+    """ Encode a JSON dataclass object
+
+    Args:
+        object_tag: Tag to be used in storage
+        item: Item to be encoded
+    Returns:
+        Dictionary that can be serialized
+    """
+    return {
+        JsonSerializeKey.OBJECT: object_tag,
+        JsonSerializeKey.CONTENT: item.to_dict()
+    }
+
+
+def decode_json_dataclass(class_type, data):
+    """ Decode a JSON dataclass object
+
+    Args:
+        class_type: Type of class to be decoded
+        data: Decoded data
+    Returns
+        Object of type specified
+    """
+    return class_type.from_dict(data[JsonSerializeKey.CONTENT])
 
 
 def encode_json(data: object) -> str:
