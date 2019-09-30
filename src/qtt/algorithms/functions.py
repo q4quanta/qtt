@@ -463,21 +463,29 @@ def fit_gauss_ramsey(x_data, y_data, weight_power=0, maxiter=None, maxfun=5000, 
         result_dict (dict): dictionary containing a description, the par_fit and initial_params
 
     """
+    from lmfit import Model
+    def func(x, A,t2s,ramseyfreq,angle,B): return gauss_ramsey(x, [A,t2s,ramseyfreq,angle,B])
 
-    def func(params): return cost_gauss_ramsey(x_data, y_data, params, weight_power=weight_power)
-
+    model=Model(func)
+    
     if initial_params is None:
         initial_params = estimate_parameters_damped_sine_wave(x_data, y_data, exponent=2)
 
-    fit_parameters = scipy.optimize.fmin(func, initial_params, maxiter=maxiter, maxfun=maxfun, disp=verbose >= 2)
+    model.set_param_hint('A', min=0, max=initial_params[0]*1.5)
+    model.set_param_hint('ramseyfreq', min=0, max=np.inf)
+
+    ip=dict(zip(model.param_names, initial_params))
+    result=model.fit(y_data, x=x_data, **ip)
+    
+    fitted_parameters = np.array([result.best_values[p] for p in model.param_names])
 
     result_dict = {
         'description': 'Function to analyse the results of a Ramsey experiment, fitted function: gauss_ramsey = '
                        'A * exp(-(x_data/t2s)**2) * sin(2pi*ramseyfreq * x_data - angle) +B',
-        'parameters fit': fit_parameters,
+        'parameters fit': fitted_parameters,
         'parameters initial guess': initial_params}
 
-    return fit_parameters, result_dict
+    return fitted_parameters, result_dict
 
 
 def plot_gauss_ramsey_fit(x_data, y_data, fit_parameters, fig):
