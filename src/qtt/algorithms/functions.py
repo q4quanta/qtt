@@ -65,10 +65,11 @@ def fit_gaussian(x_data, y_data, maxiter=None, maxfun=5000, verbose=1, initial_p
     maxsignal = np.percentile(x_data, 98)
     minsignal = np.percentile(x_data, 2)
     if initial_params is None:
-        amplitude = np.max(y_data)
-        s = (maxsignal - minsignal) * 1 / 20
+        amplitude = np.max(y_data)-np.min(y_data)
+        s = (maxsignal - minsignal) * 1 / 10
         mean = x_data[int(np.where(y_data == np.max(y_data))[0][0])]
         offset = np.min(y_data)
+        
         initial_params = np.array([mean, s, amplitude, offset])
     par_fit = scipy.optimize.fmin(cost_function, initial_params, maxiter=maxiter, maxfun=maxfun, disp=verbose >= 2)
 
@@ -202,9 +203,8 @@ def fit_double_gaussian(x_data, y_data, maxiter=None, maxfun=5000, verbose=1, in
 
     param_names = double_gaussian_model.param_names
     result = double_gaussian_model.fit(y_data, x=x_data, **dict(zip(param_names, initial_params)), verbose=0)
-
     par_fit = np.array([result.best_values[p] for p in param_names])
-
+    
     if par_fit[4] > par_fit[5]:
         par_fit = np.take(par_fit, [1, 0, 3, 2, 5, 4])
     # separation is the difference between the max of the gaussians divided by the sum of the std of both gaussians
@@ -215,6 +215,8 @@ def fit_double_gaussian(x_data, y_data, maxiter=None, maxfun=5000, verbose=1, in
     result_dict = {'parameters initial guess': initial_params,
                    'separation': separation, 'split': weigthed_distance_split}
     result_dict['parameters'] = par_fit
+    result_dict['reduced_chi_squared']=result.redchi
+    
     result_dict['left'] = np.take(par_fit, [4, 2, 0])
     result_dict['right'] = np.take(par_fit, [5, 3, 1])
     result_dict['type'] = 'fitted double gaussian'

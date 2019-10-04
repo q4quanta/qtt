@@ -78,6 +78,7 @@ def _plot_rts_histogram(data, num_bins, double_gaussian_fit, split, figure_title
     plt.legend()
     plt.title(figure_title)
 
+from qtt.algorithms.functions import fit_gaussian
 
 def two_level_threshold(data, number_of_bins=40) -> dict:
     """ Determine threshold for separation of two-level signal
@@ -94,6 +95,32 @@ def two_level_threshold(data, number_of_bins=40) -> dict:
     counts, bins = np.histogram(data, bins=number_of_bins)
     bin_centres = np.array([(bins[i] + bins[i + 1]) / 2 for i in range(0, len(bins) - 1)])
     _, result_dict = fit_double_gaussian(bin_centres, counts)
+    
+
+    if result_dict['left'][2]>result_dict['right'][2]:
+              large =  result_dict['left']
+              small =  result_dict['right']
+    else:
+              large =  result_dict['right']
+              small =  result_dict['left']
+    print(large, small)
+    print(f'ratio: {large[2]/small[2]}')
+    if large[2]/small[2]>10:
+           # re-estimate by fitting a single gaussian to the data remaining after removing the main gaussian
+           residual_counts=counts-gaussian(bin_centres, *large)
+           idx=np.logical_and(bin_centres>large[0]-1.5*large[1], bin_centres<large[0]+1.5*large[1])
+           residual_counts[idx]=0
+           gauss_fit,_=fit_gaussian(bin_centres, residual_counts)
+           
+           plt.figure(44); plt.clf()
+           plt.plot(bin_centres, residual_counts)
+           plt.plot(bin_centres, gaussian(bin_centres, *gauss_fit), 'm')
+           
+           initial_parameters = np.vstack( (large[::-1], gauss_fit[0:3][::-1])).T.flatten()
+           _, result_dict2 = fit_double_gaussian(bin_centres, counts, initial_params=initial_parameters)
+           if result_dict2['reduced_chi_squared']<result_dict['reduced_chi_squared']:
+                  result_dict=result_dict2
+    
 
     result = {'signal_threshold': result_dict['split'], 'double_gaussian_fit': result_dict,
               'separation': result_dict['separation'],
