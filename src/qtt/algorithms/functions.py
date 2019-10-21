@@ -69,6 +69,8 @@ def fit_gaussian(x_data, y_data, maxiter=None, maxfun=5000, verbose=1, initial_p
         s = (maxsignal - minsignal) * 1 / 10
         mean = x_data[int(np.where(y_data == np.max(y_data))[0][0])]
         offset = np.min(y_data)
+        #s2=np.sum((y_data-offset)*(x_data-mean)**2 )
+        #print([s,s2])
         
         initial_params = np.array([mean, s, amplitude, offset])
     par_fit = scipy.optimize.fmin(cost_function, initial_params, maxiter=maxiter, maxfun=maxfun, disp=verbose >= 2)
@@ -408,6 +410,15 @@ def estimate_dominant_frequency(signal, sample_rate=1, remove_dc=True, fig=None)
 # %%
 #
 
+def _transform_dsp(parameters):
+       s0=np.sign(parameters[0])
+       s2=np.sign(parameters[2])
+       parameters2=np.copy(parameters)
+       parameters2[0]*=s0
+       parameters2[2]*=s2
+       if s0*s2<0:
+              parameters[3]+=np.pi
+       return parameters2
 
 def estimate_parameters_damped_sine_wave(x_data, y_data, exponent=2):
     """ Estimate initial parameters of a damped sine wave
@@ -441,6 +452,7 @@ def estimate_parameters_damped_sine_wave(x_data, y_data, exponent=2):
     t2s = 2 * duration / decay_factor
 
     initial_params = np.array([A, t2s, ramseyfreq, angle, B])
+    initial_params = _transform_dsp(initial_params)
     return initial_params
 
 

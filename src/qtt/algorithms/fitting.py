@@ -198,7 +198,7 @@ def fitFermiLinear(x_data, y_data, verbose=0, fig=None, l=1.16, use_lmfit=False)
         fitted_parameters = fitting_results[0]
 
     if fig is not None:
-        y = FermiLinear(xdata, *list(fitted_parameters))
+        y = FermiLinear(xdata, *list(fitted_parameters), l=l)
         plt.figure(fig)
         plt.clf()
         plt.plot(xdata, ydata, '.b', label='data')

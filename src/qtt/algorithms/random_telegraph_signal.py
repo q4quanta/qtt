@@ -103,19 +103,21 @@ def two_level_threshold(data, number_of_bins=40) -> dict:
     else:
               large =  result_dict['right']
               small =  result_dict['left']
+    
     print(large, small)
     print(f'ratio: {large[2]/small[2]}')
-    if large[2]/small[2]>10:
+    if large[2]/small[2]>7:
            # re-estimate by fitting a single gaussian to the data remaining after removing the main gaussian
            residual_counts=counts-gaussian(bin_centres, *large)
            idx=np.logical_and(bin_centres>large[0]-1.5*large[1], bin_centres<large[0]+1.5*large[1])
            residual_counts[idx]=0
            gauss_fit,_=fit_gaussian(bin_centres, residual_counts)
            
-           plt.figure(44); plt.clf()
-           plt.plot(bin_centres, residual_counts)
-           plt.plot(bin_centres, gaussian(bin_centres, *gauss_fit), 'm')
-           
+           if 0:
+                  plt.figure(44); plt.clf()
+                  plt.plot(bin_centres, residual_counts)
+                  plt.plot(bin_centres, gaussian(bin_centres, *gauss_fit), 'm')
+                  plt.xlabel('residual_counts')
            initial_parameters = np.vstack( (large[::-1], gauss_fit[0:3][::-1])).T.flatten()
            _, result_dict2 = fit_double_gaussian(bin_centres, counts, initial_params=initial_parameters)
            if result_dict2['reduced_chi_squared']<result_dict['reduced_chi_squared']:
