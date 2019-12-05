@@ -1,2 +1,2 @@
-from qtt.measurements.acquisition.interfaces.acquisition_interface import AcquisitionInterface
+from qtt.measurements.acquisition.interfaces.digitizer_interface import DigitizerInterface
 from qtt.measurements.acquisition.interfaces.acquisition_scope_interface import AcquisitionScopeInterface

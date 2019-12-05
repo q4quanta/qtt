@@ -1,31 +1,27 @@
 """ Interface for devices to acquire data."""
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Any
 
-from qilib.data_set import DataArray
-from qilib.utils import PythonJsonStructure
+import numpy as np
+from qcodes import Station
 
 
-class AcquisitionInterface(ABC):
+class DigitizerInterface(ABC):
     """ An interface which contains the functionality for collecting data using a acquisition device."""
 
-    def __init__(self, address: str) -> None:
+    def __init__(self, station: Station, digitizer: Any, digitizer_class_name: type) -> None:
         """ Creates and connects the acquisition device from the given address.
 
         Args:
-            address: The unique device identifier.
+            station: The qcodes station.
+            digitizer: The unique device identifier.
+            digitizer_class_name: The class name of the digitizer.
         """
-        self._address = address
-
-    @abstractmethod
-    def initialize(self, configuration: PythonJsonStructure) -> None:
-        """ Initializes the readout device by applying the configuration.
-
-        Args:
-            configuration: A structure with all default settings needed
-                           for acquiring raw-data from the readout device.
-        """
+        self._station = station
+        self._digitizer = digitizer
+        if not isinstance(digitizer, digitizer_class_name):
+            ValueError(f'Invalid type of digitizer provided ({type(digitizer)} != {str(digitizer_class_name)})!')
 
     @abstractmethod
     def start_acquisition(self) -> None:
@@ -36,17 +32,17 @@ class AcquisitionInterface(ABC):
         """
 
     @abstractmethod
-    def acquire(self, number_of_averages: int, timeout: float = 30) -> List[DataArray]:
+    def acquire(self, number_of_averages: int, timeout: float = 30) -> np.ndarray:
         """ Reads raw-data from the acquisition device.
 
-            This method should be called after initialising and starting the acquisition.
+            This method should be called after initializing and starting the acquisition.
 
         Args:
             number_of_averages: The number of averages taken during acquiring.
             timeout: The maximum period in seconds to acquire records.
 
         Returns:
-            A list with the collected scope records.
+            A array with the collected scope records and with settings in the metadata.
         """
 
     @abstractmethod

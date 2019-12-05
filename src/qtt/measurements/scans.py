@@ -1563,13 +1563,12 @@ def measure_raw_segment_m4i(digitizer, period, read_ch, mV_range, Naverage=100, 
 
     """
     sample_rate = digitizer.exact_sample_rate()
-    maxrate = digitizer.max_sample_rate()
     if sample_rate == 0:
-        raise Exception(
-            'sample rate of m4i is zero, please reset the digitizer')
+        raise ValueError('M4i sample rate is zero, please reset the digitizer!')
+
+    maxrate = digitizer.max_sample_rate()
     if sample_rate > maxrate:
-        raise Exception(
-            'sample rate of m4i is > %d MHz, this is not supported' % (maxrate // 1e6))
+        raise ValueError(f'M4i sample rate is > {maxrate // 1e6} MHz, this is not supported!')
 
     # code for compensating for trigger delays in software
     signal_delay = getattr(digitizer, 'signal_delay', None)
@@ -1582,8 +1581,7 @@ def measure_raw_segment_m4i(digitizer, period, read_ch, mV_range, Naverage=100, 
         mV_range = digitizer.range_channel_0()
 
     digitizer.initialize_channels(read_ch, mV_range=mV_range, memsize=memsize, termination=None)
-    dataraw = digitizer.blockavg_hardware_trigger_acquisition(
-        mV_range=mV_range, nr_averages=Naverage, post_trigger=post_trigger)
+    dataraw = digitizer.blockavg_hardware_trigger_acquisition(mV_range=mV_range, nr_averages=Naverage, post_trigger=post_trigger)
 
     if isinstance(dataraw, tuple):
         dataraw = dataraw[0]
@@ -1593,43 +1591,42 @@ def measure_raw_segment_m4i(digitizer, period, read_ch, mV_range, Naverage=100, 
         data = _trigger_re_arm_padding(data, signal_end-signal_start, verbose)
     return data
 
-@qtt.utilities.tools.deprecated
-def select_digitizer_memsize(digitizer, period, trigger_delay=None, nsegments=1, verbose=1):
-    """ Select suitable memory size for a given period
+    def select_digitizer_memsize(digitizer, period, trigger_delay=None, nsegments=1, verbose=1):
+        """ Select suitable memory size for a given period
 
-    Args:
-        digitizer (object): handle to instrument
-        period (float): period of signal to measure
-        trigger_delay (float): delay in seconds between ingoing signal and returning signal
-        nsegments (int): number of segments of period length to fit in memory
-    Returns:
-        memsize (int)
-    """
-    drate = digitizer.sample_rate()
-    if drate == 0:
-        raise Exception('digitizer samplerate is zero, please reset digitizer')
-    npoints = int(period * drate)
-    segsize = int(np.ceil(npoints / 16) * 16)
-    memsize = segsize * nsegments
-    if memsize > digitizer.memory():
-        raise (Exception('Trying to acquire too many points. Reduce sampling rate, period or number segments'))
-    digitizer.data_memory_size.set(memsize)
-    if trigger_delay is None:
-        spare = np.ceil((segsize - npoints) / 16) * 16
-        pre_trigger = min(spare / 2, 512)
-    else:
-        pre_trigger = trigger_delay * drate
-    post_trigger = int(np.ceil((segsize - pre_trigger) // 16) * 16)
-    digitizer.posttrigger_memory_size(post_trigger)
-    if verbose:
-        print('%s: sample rate %.3f Mhz, period %f [ms]' % (
-            digitizer.name, drate / 1e6, period * 1e3))
-        print('%s: trace %d points, selected memsize %d' %
-              (digitizer.name, npoints, memsize))
-        print('%s: pre and post trigger: %d %d' % (digitizer.name,
-                                                   digitizer.data_memory_size() - digitizer.posttrigger_memory_size(),
-                                                   digitizer.posttrigger_memory_size()))
-    return memsize
+        Args:
+            digitizer (object): handle to instrument
+            period (float): period of signal to measure
+            trigger_delay (float): delay in seconds between ingoing signal and returning signal
+            nsegments (int): number of segments of period length to fit in memory
+        Returns:
+            memsize (int)
+        """
+        drate = digitizer.sample_rate()
+        if drate == 0:
+            raise Exception('digitizer samplerate is zero, please reset digitizer')
+        npoints = int(period * drate)
+        segsize = int(np.ceil(npoints / 16) * 16)
+        memsize = segsize * nsegments
+        if memsize > digitizer.memory():
+            raise (Exception('Trying to acquire too many points. Reduce sampling rate, period or number segments'))
+        digitizer.data_memory_size.set(memsize)
+        if trigger_delay is None:
+            spare = np.ceil((segsize - npoints) / 16) * 16
+            pre_trigger = min(spare / 2, 512)
+        else:
+            pre_trigger = trigger_delay * drate
+        post_trigger = int(np.ceil((segsize - pre_trigger) // 16) * 16)
+        digitizer.posttrigger_memory_size(post_trigger)
+        if verbose:
+            print('%s: sample rate %.3f Mhz, period %f [ms]' % (
+                digitizer.name, drate / 1e6, period * 1e3))
+            print('%s: trace %d points, selected memsize %d' %
+                (digitizer.name, npoints, memsize))
+            print('%s: pre and post trigger: %d %d' % (digitizer.name,
+                                                    digitizer.data_memory_size() - digitizer.posttrigger_memory_size(),
+                                                    digitizer.posttrigger_memory_size()))
+        return memsize
 
 
 @qtt.pgeometry.static_var('debug_enabled', False)
