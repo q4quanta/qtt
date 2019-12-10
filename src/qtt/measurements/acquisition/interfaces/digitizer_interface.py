@@ -1,27 +1,37 @@
 """ Interface for devices to acquire data."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 from qcodes import Station
-
+from qilib.utils import PythonJsonStructure
+from qilib.configuration_helper import InstrumentAdapterFactory
 
 class DigitizerInterface(ABC):
     """ An interface which contains the functionality for collecting data using a acquisition device."""
 
-    def __init__(self, station: Station, digitizer: Any, digitizer_class_name: type) -> None:
+    def __init__(self, instrument_adapter_class_name: str, address: str,
+                 instrument_name: Optional[str] = None) -> None:
         """ Creates and connects the acquisition device from the given address.
 
         Args:
-            station: The qcodes station.
-            digitizer: The unique device identifier.
-            digitizer_class_name: The class name of the digitizer.
+            instrument_adapter_class_name: Name of the InstrumentAdapter subclass.
+            address: Address of the physical instrument.
+            instrument_name: An optional name for the underlying instrument.
         """
-        self._station = station
-        self._digitizer = digitizer
-        if not isinstance(digitizer, digitizer_class_name):
-            ValueError(f'Invalid type of digitizer provided ({type(digitizer)} != {str(digitizer_class_name)})!')
+        self._adapter = InstrumentAdapterFactory.get_instrument_adapter(instrument_adapter_class_name,
+                                                                        address, instrument_name)
+        self._digitizer = self._adapter.instrument
+
+    @property
+    def adapter(self):
+        """ Returns the instrument adapter"""
+        return self._adapter
+
+    @property
+    def digitizer(self):
+        return self._digitizer
 
     @abstractmethod
     def start_acquisition(self) -> None:

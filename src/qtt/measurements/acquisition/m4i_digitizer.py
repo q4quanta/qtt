@@ -1,24 +1,31 @@
 import logging
 from typing import Any, List, Optional
 
-import numpy as np
-from qcodes_contrib_drivers.drivers.Spectrum.M4i import M4i
-
 import pyspcm
+import numpy as np
 from qtt.measurements.acquisition.interfaces import DigitizerInterface
+from qilib.utils import PythonJsonStructure
 
 
 class M4iDigitizer(DigitizerInterface):
 
-    def __init__(self, station: Any, digitizer: M4i):
-        super().__init__(station, digitizer, M4i)
+    def __init__(self, address: str, instrument_name: Optional[str] = None):
+        """ Creates and connects the M4i digitizer from the given address.
+
+        Args:
+            address: Address of the physical instrument.
+            instrument_name: An optional name for the underlying instrument.
+        """
+        super().__init__('M4iInstrumentAdapter', address, instrument_name) 
+        self.__fix_m4i_acquisition()
 
     def initialize(self, period: float, channels: List[int], average_traces: bool,
                    number_of_segments: int, mV_range: Optional[float] = None, 
                    trigger_re_arm_compensation: Optional[int] = None,
                    trigger_re_arm_padding: Optional[bool] = False,
                    verbose: Optional[int] = 0) -> None:
-        """ Initializes the M4i digitizer by applying the provided settings.
+        """
+        Initializes the M4i digitizer by applying the provided settings.
 
         Args:
             period: The measurement period of the seconds.
