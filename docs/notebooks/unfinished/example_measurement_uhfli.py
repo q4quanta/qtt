@@ -30,10 +30,9 @@ scope_reader = UHFLIScopeReader(device_id)
 uhfli = scope_reader.adapter.instrument
 station = Station(uhfli, update_snapshot=False)
 
-
 # INITIALIZE THE SCOPE READER
 
-file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uhfli.dat')
+file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'UHFLI_dev2338.dat')
 configuration = load_configuration(file_path)
 scope_reader.initialize(configuration)
 
@@ -67,7 +66,7 @@ plt.show()
 samples = 10
 
 for number in range(1, samples):
-    records = scope_reader.acquire(number_of_records=10)
+    records = scope_reader.acquire(number_of_averages=10)
     plot_1D_dataset(plt, records, 'Time [sec.]', 'Amplitude [V]')
 
 scope_reader.stop_acquisition()
