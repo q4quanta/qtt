@@ -361,7 +361,7 @@ def plot_gauss_ramsey_fit(x_data, y_data, fit_parameters, fig):
         y_data: Input array with signal
         fit_parameters: Result of fit_gauss_ramsey (fitting units in seconds)
     """
-    test_x = np.linspace(0, np.max(x_data), 200)
+    test_x = np.linspace(np.min(x_data), np.max(x_data), 200)
     freq_fit = abs(fit_parameters[2] * 1e-6)
     t2star_fit = fit_parameters[1] * 1e6
 
